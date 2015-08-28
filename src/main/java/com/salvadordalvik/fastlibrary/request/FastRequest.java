@@ -75,7 +75,7 @@ public abstract class FastRequest<T> {
         return baseUrl;
     }
 
-    public abstract T parseResponse(NetworkResponse response) throws Exception;
+    public abstract T parseResponse(Request<T> request, NetworkResponse response) throws Exception;
 
     protected byte[] requestBody(){
         return null;
@@ -91,12 +91,16 @@ public abstract class FastRequest<T> {
 
     public Request<T> build(FastStatusCallback callback){
         externalCallback = callback;
-        return new FastInternalRequest(generateUrl(), successCallback, errorCallback);
+        return generateRequest(generateUrl(), successCallback, errorCallback);
     }
 
     private static final RetryPolicy lenientRetryPolicy = new DefaultRetryPolicy(20000, 1, 1);
 
-    private class FastInternalRequest extends Request<T>{
+    protected Request<T> generateRequest(String url, Response.Listener<T> success, Response.ErrorListener error){
+        return new FastInternalRequest(url, success, error);
+    }
+
+    protected class FastInternalRequest extends Request<T>{
         private Response.Listener<T> successListener;
 
         public FastInternalRequest(String url, Response.Listener<T> success, Response.ErrorListener error) {
@@ -108,7 +112,7 @@ public abstract class FastRequest<T> {
         @Override
         protected Response<T> parseNetworkResponse(NetworkResponse response) {
             try{
-                T result = parseResponse(response);
+                T result = parseResponse(this, response);
                 return Response.success(result, HttpHeaderParser.parseCacheHeaders(response));
             }catch (VolleyError ve){
                 ve.printStackTrace();
